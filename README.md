@@ -89,8 +89,10 @@ npm run preview
 2. Extract this source ZIP, then put the **contents** of the `QueryLab` folder in that repository's root.
 3. Push all source files. Do not upload `node_modules` or `dist` to Git.
 4. Under **Settings > Pages > Build and deployment**, select **GitHub Actions** as the source.
-5. The provided `.github/workflows/deploy.yml` installs dependencies, performs the TypeScript check, runs Vitest, builds the static files and uploads `dist` to Pages.
+5. The provided `.github/workflows/deploy.yml` installs dependencies, performs the TypeScript check, runs Vitest, builds the static files, verifies the Vite output and uploads **only `dist`** to Pages.
 6. When the workflow succeeds and GitHub reports a URL, open `https://sudyp07.github.io/QueryLab/`.
+
+**White screen after publishing?** Open Settings > Pages, make sure Source is GitHub Actions, then inspect the `Build, test and deploy QueryLab` run in Actions. The custom `build` job and its `deploy` job must both succeed. The default `pages-build-deployment` job is not a substitute: that workflow can deploy raw source files. Verify that the published page's HTML references `/QueryLab/assets/` JavaScript bundles, rather than `/src/main.tsx`. After a successful redeploy, refresh with Ctrl+Shift+R. If a previous version had installed a service worker, a stale cache can survive; use your browser's Application > Service Workers > Unregister, then reload. Do not clear the entire site's storage unless you have exported your databases first.
 
 The Vite config uses `base: '/QueryLab/'`. The service worker manifest also uses this project path. If you rename the repository, update `vite.config.ts` and the README's project URL accordingly.
 

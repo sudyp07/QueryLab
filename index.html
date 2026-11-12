@@ -10,5 +10,21 @@
     <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
     <title>QueryLab · Database Learning Laboratory</title>
   </head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <body>
+    <div id="root">
+      <div id="querylab-startup" role="status" style="font:14px/1.5 system-ui,sans-serif;color:#475569;padding:36px 28px;">
+        Starting QueryLab...
+      </div>
+    </div>
+    <script>
+      window.setTimeout(function () {
+        var placeholder = document.getElementById('querylab-startup');
+        if (!placeholder) return;
+        placeholder.setAttribute('role', 'alert');
+        placeholder.innerHTML = '<strong style="color:#0f172a;font-size:16px">QueryLab could not start</strong>' +
+          '<p>The application assets may not be deployed correctly. Check GitHub Pages Settings and select GitHub Actions as the build source.</p>';
+      }, 12000);
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
