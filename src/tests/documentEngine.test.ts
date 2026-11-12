@@ -1,0 +1,18 @@
+import { describe,it,expect } from 'vitest';
+import { runDocumentQuery } from '../engines/documentEngine';
+import type { Collections } from '../engines/documentEngine';
+const fixture=():Collections=>({students:[{_id:'s1',name:'Ada',gpa:3.9,year:2,skills:['SQL'],address:{city:'London'}},{_id:'s2',name:'Bina',gpa:3.5,year:1,skills:['Python'],address:{city:'Kathmandu'}},{_id:'s3',name:'Chen',gpa:3.7,year:2,skills:['SQL','R'],address:{city:'Tokyo'}}]});
+describe('MongoDB-style simulator (not a MongoDB server)',()=>{
+ it('filters with comparison operators',()=>{const out=runDocumentQuery(fixture(),{collection:'students',operation:'find',filter:{gpa:{$gte:3.7}}});expect(out.result.documents.map(v=>v.name)).toEqual(['Ada','Chen']);expect(out.changed).toBe(false);});
+ it('filters nested fields',()=>{const out=runDocumentQuery(fixture(),{collection:'students',operation:'findOne',filter:{'address.city':'Kathmandu'}});expect(out.result.documents[0].name).toBe('Bina');});
+ it('sorts and paginates',()=>{const out=runDocumentQuery(fixture(),{collection:'students',operation:'find',sort:{gpa:-1},skip:1,limit:1});expect(out.result.documents[0].name).toBe('Chen');});
+ it('inserts records and allocates unique IDs',()=>{const out=runDocumentQuery(fixture(),{collection:'students',operation:'insertOne',document:{name:'Dara',gpa:3.6} as never});expect(out.changed).toBe(true);expect(out.state.students).toHaveLength(4);expect(out.result.documents[0]._id).toBeTruthy();});
+ it('rejects duplicate IDs without changing original objects',()=>{const data=fixture();expect(()=>runDocumentQuery(data,{collection:'students',operation:'insertOne',document:{_id:'s1',name:'Duplicate'}})).toThrow(/Duplicate _id/);expect(data.students).toHaveLength(3);});
+ it('updates many using $inc and $set without mutating input',()=>{const data=fixture();const out=runDocumentQuery(data,{collection:'students',operation:'updateMany',filter:{year:2},update:{$inc:{year:1},$set:{status:'updated'}}});expect(out.result.affected).toBe(2);expect(out.state.students[0].year).toBe(3);expect(out.state.students[2].status).toBe('updated');expect(data.students[0].year).toBe(2);});
+ it('supports $addToSet, $pull and $rename',()=>{let output=runDocumentQuery(fixture(),{collection:'students',operation:'updateOne',filter:{_id:'s1'},update:{$addToSet:{skills:'Python'},$rename:{name:'fullName'}}});output=runDocumentQuery(output.state,{collection:'students',operation:'updateOne',filter:{_id:'s1'},update:{$pull:{skills:'SQL'}}});expect(output.state.students[0].skills).toEqual(['Python']);expect(output.state.students[0].fullName).toBe('Ada');});
+ it('executes aggregation pipeline',()=>{const out=runDocumentQuery(fixture(),{collection:'students',operation:'aggregate',pipeline:[{$group:{_id:'$year',count:{$sum:1}}},{$sort:{_id:1}}]});expect(out.result.documents).toEqual([{_id:1,count:1},{_id:2,count:2}]);});
+ it('deletes a matching record',()=>{const out=runDocumentQuery(fixture(),{collection:'students',operation:'deleteOne',filter:{name:'Bina'}});expect(out.state.students).toHaveLength(2);expect(out.result.affected).toBe(1);});
+ it('creates an empty collection',()=>{const out=runDocumentQuery(fixture(),{collection:'newcollection',operation:'createCollection'});expect(out.state.newcollection).toEqual([]);});
+ it('rejects unsupported operators',()=>expect(()=>runDocumentQuery(fixture(),{collection:'students',operation:'unsupported'})).toThrow(/Unsupported/));
+ it('rejects unsafe nested update paths',()=>expect(()=>runDocumentQuery(fixture(),{collection:'students',operation:'updateOne',filter:{_id:'s1'},update:{$set:{'__proto__.corrupt':true}}})).toThrow(/Unsafe/));
+});
